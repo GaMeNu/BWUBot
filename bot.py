@@ -48,7 +48,7 @@ async def test(ctx):
     await ctx.send("Hello world!")
 
 @bot.command()
-async def kill(ctx, *args):
+async def kill(ctx):
     
     mentions = ctx.message.mentions
     if not mentions:
@@ -75,6 +75,11 @@ async def kill(ctx, *args):
 
     await ctx.send(killed)
 
+@bot.command()
+#this was wender_159's idea, not mine.
+#please help me
+async def uwu(ctx):
+    await ctx.send('\"UwU\"')
     
 
 bot.run(TOKEN)
