@@ -55,16 +55,17 @@ async def kill(ctx, *args):
         await ctx.send('Please mention member(s) to kill with an \'@\'')
         return
     for member in mentions:
-        if member.name == 'GM' and not ctx.message.author == 'GM#2372':
+        if member.name == 'GM' and not f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == 'GM#2372':
             await ctx.send('Please do not attempt to murder my creator.')
             return
+
     if len(mentions)>=2:
         killed ='Congrats. '
         for member in mentions[0:-2]:
             killed += f'{member}'
         killed +=f'{mentions[-2]} and {mentions[-1]} have been killed.'
     else:
-        if(ctx.message.author == f'{mentions[0].name}#{mentions[0].discriminator}'):
+        if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
             killed = f'Congrats. {mentions[0]} has committed suicide.'
         else:
             killed = f'Congrats. {mentions[0]} has been killed'
