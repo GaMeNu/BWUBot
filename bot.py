@@ -304,8 +304,7 @@ async def terrorism(ctx):
             killed += f"{dead_count} people were killed overall."
     killed +='\n'
     
-    killed += '(Note: Please do not actually commit terrorism IRL. I think this is pretty clear.)'
-    killed += f'\nTESTING: modifier = {modifier}'
+    killed += '(Note: Please **do not actually commit terrorism IRL**. I think this is pretty clear.)'
     
 
 
