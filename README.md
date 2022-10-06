@@ -14,6 +14,12 @@ Aliases: +status, +a?
 ### Kill system:
 **+kill [message including user mention(s)]:** Kills the mentioned user(s) if they are alive.
 
+Aliases: +liquidate, +destroy, +stab, +attack, +shoot, +assassinate
+
 **+revive [message including user mention(s)]:** Revives the mentioned user(s) if they are dead.
+
+**+terrorism:** Randomly kills 0-12 server members.
+
+Aliases: +bomb
 
 **+dead:** Sends a list of all dead members.
