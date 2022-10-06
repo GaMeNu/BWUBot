@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import time as t
 import random as rand
 import datetime
+import urllib3
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
@@ -80,12 +81,15 @@ async def on_message(message):
 @bot.command()
 async def help(ctx):
     embed_color=rand.randrange(1, 16777216)
-    help_embed = discord.Embed(title="BWUBot help", description="Here you can find all currently available commands!",color=embed_color,timestamp=datetime.datetime.utcnow())
+    help_embed = discord.Embed(title="BWUBot help", description="Here you can find all currently available commands!",color=embed_color,timestamp=datetime.datetime.utcnow(),url='https://github.com/GaMeNu/BWUBot')
+    help_embed.set_footer(text=f'GitHub: https://github.com/GaMeNu/BWUBot • Help message color: {hex(embed_color)}')
+    help_embed.set_author(name='GameMenu (GM)\'s')
     help_embed.add_field(name="+help",value="Guess what this one does, I bet you can't.", inline=False)
     help_embed.add_field(name="+on?",value="Also works with: +status, +a?\nSends a response if the bot is on, along with the time it's been connected",inline=False)
-    help_embed.add_field(name='+tips',value='Sends a random anxiety tip.',inline=False)
-    help_embed.add_field(name="+kill [Message including a user(s) mention]",value="Kills the alive user(s) mentioned in the message",inline=False)
-    help_embed.add_field(name="+revive [Message including a user(s) mention]",value="Revives the dead user(s) mentioned in the message",inline=False)
+    help_embed.add_field(name='+tips',value='Sends a random anxiety tip.\nCommand idea and sources by V0C4L01D.',inline=False)
+    help_embed.add_field(name="+kill [(Message including a user(s) mention)/(*/all)]",value="Also works with:+liquidate, +destroy, +stab, +attack, +shoot, +assassinate\nKills the alive user(s) mentioned in the message, */all = everyone",inline=False)
+    help_embed.add_field(name="+revive [(Message including a user(s) mention)/(*/all)]",value="Revives the dead user(s) mentioned in the message, */all = everyone",inline=False)
+    help_embed.add_field(name='+terrorism',value="Also works with: +bomb\nKills 0-12 random people.")
     help_embed.add_field(name="+dead",value="Sends a list of all dead members.",inline=False)
 
     
@@ -117,15 +121,17 @@ async def isOn(ctx):
     await ctx.send(f"Hello world! I am currently online.\nTime since connected: {uptimeH}:{uptimeM}:{uptimeS}")
 
 #Kill command, will go into more detail in the command
-@bot.command()
-async def kill(ctx):
+@bot.command(aliases = ['liquidate','destroy','stab','attack','shoot','assassinate'])
+async def kill(ctx, *args):
     #Collects all mentions in message. If no mentions found returns a sort of error.
+
+    
     mentions = ctx.message.mentions
     if not mentions:
-        await ctx.send('Please mention member(s) to kill with an \'@\'')
-        return
+        if ((not args) or (not args[0] in ['all','*'])):
+            await ctx.send('Please mention member(s) to kill with an \'@\', or kill everyone with \'*\'')
+            return
     for member in mentions:
-
         #Protects the creator (me) and other bots.
         if member.name == 'GM' and not f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == 'GM#2372':
             await ctx.send('Please do not attempt to murder my creator.')
@@ -136,52 +142,68 @@ async def kill(ctx):
     
     #Sends a killed message with a few checks to check if there are multiple members, specifically who to kill and who is already dead, and if the member killed himself.
     killed ='Congrats. '
-    #Multi person murder.
-    if len(mentions)>=2:
-        for member in mentions[0:-2]:
-            if(not member in dead_members):
-                killed += f'{member}, '
+
+    if args[0] in ['all','*']:
+
+        killed = 'Mass murder! Killed:\n'
+
+        guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+        count =0
+        for member in guild.members:
+            if not member in dead_members:
+                killed += f'- {member}\n'
                 dead_members.append(member)
-            else:
-                killed+=f'{member} was already dead, '
-
-        if(not mentions[-2] in dead_members):
-            killed += f'{mentions[-2]} '
-            dead_members.append(mentions[-2])
-        else:
-            killed +=f'{mentions[-2]} was already dead '
-        killed += 'and '
-        if (not mentions[-1] in dead_members):
-            killed += f'{mentions[-1]} were killed.'
-            dead_members.append(mentions[-1])
-        else:
-            killed+= f'{mentions[-1]} was already dead. The rest were killed.'
-
-    #One person murder.
+                count+=1
+        
+        killed += f'{count} members were killed overall.'
     else:
-        if(not mentions[0] in dead_members):
-            dead_members.append(mentions[0])
-            if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                killed += f'{mentions[0]} has committed suicide.'
+        #Multi person murder.
+        if len(mentions)>=2:
+            for member in mentions[0:-2]:
+                if(not member in dead_members):
+                    killed += f'{member}, '
+                    dead_members.append(member)
+                else:
+                    killed+=f'{member} was already dead, '
+
+            if(not mentions[-2] in dead_members):
+                killed += f'{mentions[-2]} '
+                dead_members.append(mentions[-2])
             else:
-                killed += f'{mentions[0]} has been killed.'
+                killed +=f'{mentions[-2]} was already dead '
+            killed += 'and '
+            if (not mentions[-1] in dead_members):
+                killed += f'{mentions[-1]} were killed.'
+                dead_members.append(mentions[-1])
+            else:
+                killed+= f'{mentions[-1]} was already dead. The rest were killed.'
+
+        #One person murder.
         else:
-            if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                killed += f'{mentions[0]} has committed suicide. AGAIN.'
+            if(not mentions[0] in dead_members):
+                dead_members.append(mentions[0])
+                if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
+                    killed += f'{mentions[0]} has committed suicide.'
+                else:
+                    killed += f'{mentions[0]} has been killed.'
             else:
-                killed += f'{mentions[0]} was already dead.'
+                if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
+                    killed += f'{mentions[0]} has committed suicide. AGAIN.'
+                else:
+                    killed += f'{mentions[0]} was already dead.'
 
     await ctx.send(killed)
 
 
 @bot.command()
-async def revive(ctx):
+async def revive(ctx,*args):
 
     #Kinda works like +kill, except the opposite for the checks with dead_members.
     mentions = ctx.message.mentions
     if not mentions:
-        await ctx.send('Please mention member(s) to revive with an \'@\'')
-        return
+        if ((not args) or (not args[0] in ['all','*'])):
+            await ctx.send('Please mention member(s) to kill with an \'@\', or kill everyone with \'*\'')
+            return
     for member in mentions:
         if member.name == 'GM' and not f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == 'GM#2372':
             await ctx.send('As well as the intentions were, my creator is immune to murder and thus cannot be revived.')
@@ -190,47 +212,115 @@ async def revive(ctx):
             await ctx.send('Bots are immune to murder.')
             return
     revived = "Thank you. "
-    if len(mentions)>=2:
-        for member in mentions[0:-2]:
-            if(member in dead_members):
-                revived += f'{member}, '
-                dead_members.remove(member)
-            else:
-                revived+=f'{member} was not dead, '
 
-        if(mentions[-2] in dead_members):
-            revived += f'{mentions[-2]} '
-            dead_members.remove(mentions[-2])
-        else:
-            revived +=f'{mentions[-2]} was not dead '
-        revived += 'and '
-        if (mentions[-1] in dead_members):
-            revived += f'{mentions[-1]} were revived.'
-            dead_members.remove(mentions[-1])
-        else:
-            revived+= f'{mentions[-1]} was not dead. The rest were revived.'
-    
+    if args[0] in ['all','*']:
+
+        revived = 'The ressurection has come! Revived:\n'
+
+        guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+        count = 0
+        for member in guild.members:
+            if member in dead_members:
+                revived += f'- {member}\n'
+                dead_members.remove(member)
+                count+=1
+        
+        revived += f'{count} members were killed overall.'
+            
     else:
-        if(mentions[0] in dead_members):
-            dead_members.remove(mentions[0])
-            if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                revived += f'{mentions[0]} has revived himself, somehow.'
+        if len(mentions)>=2:
+            for member in mentions[0:-2]:
+                if(member in dead_members):
+                    revived += f'{member}, '
+                    dead_members.remove(member)
+                else:
+                    revived+=f'{member} was not dead, '
+
+            if(mentions[-2] in dead_members):
+                revived += f'{mentions[-2]} '
+                dead_members.remove(mentions[-2])
             else:
-                revived += f'{mentions[0]} has been revived.'
+                revived +=f'{mentions[-2]} was not dead '
+            revived += 'and '
+            if (mentions[-1] in dead_members):
+                revived += f'{mentions[-1]} were revived.'
+                dead_members.remove(mentions[-1])
+            else:
+                revived+= f'{mentions[-1]} was not dead. The rest were revived.'
+        
         else:
-            if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                revived += f'{mentions[0]} has somehow revived himself even though he was already alive...?'
+            if(mentions[0] in dead_members):
+                dead_members.remove(mentions[0])
+                if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
+                    revived += f'{mentions[0]} has revived himself, somehow.'
+                else:
+                    revived += f'{mentions[0]} has been revived.'
             else:
-                revived += f'{mentions[0]} is not dead.'
+                if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
+                    revived += f'{mentions[0]} has somehow revived himself even though he was already alive...?'
+                else:
+                    revived += f'{mentions[0]} is not dead.'
 
     await ctx.channel.send(revived)
+
+
+@bot.command(aliases=["bomb"])
+async def terrorism(ctx):
+    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    members=guild.members
+    modifier = rand.choice([0.5,1,2.5])
+    num_killed=rand.randrange(1,6)
+
+    killed = "What? A bombing has been carried out!\n"
+    num_killed=int(num_killed*modifier)
+
+    if modifier == 0.5:
+        killed += rand.choice(["It happened in the middle of nowhere!","It happened in an abandoned channel.","Chat was already dead tho..."])
+    elif modifier == 2.5:
+        killed += rand.choice(["They bombed a BUS!","It happened in the middle of the city!","The police didn't show up in time!"])
+    else:
+        killed+=rand.choice(["They threw a granade in the middle of town! Most people ran away."])
+    killed += "\n"
+    if num_killed == 0:
+        killed+= "No one was killed."
+    elif len(dead_members)==len(members):
+        killed+="Alas, the server is already a graveyard! No one was killed."
+    
+    else:
+        killed += "**Killed:**\n"
+        dead_count = 0
+        for i in range (num_killed):
+            member = rand.choice(members)
+            while(member in dead_members and (not len(dead_members)==len(members))):
+                member = rand.choice(members)
+            
+            if not len(dead_members)==len(members):
+                dead_members.append(member)
+                killed += f" - {member}\n"
+                dead_count+=1
+        if dead_count == 1:
+            killed += f'1 person was killed overall.'
+        else:
+            killed += f"{dead_count} people were killed overall."
+    killed +='\n'
+    
+    killed += '(Note: Please do not actually commit terrorism IRL. I think this is pretty clear.)'
+    killed += f'\nTESTING: modifier = {modifier}'
+    
+
+
+    await ctx.channel.send(killed)
+        
+    
+
     
 #Sends a list of all members in dead_members
 @bot.command()
 async def dead(ctx):
-    dead = "Dead members (L):"
+    dead = "Dead members (L):\n"
     for member in dead_members:
-        dead+=f'\n - {member}'
+        dead+=f'- {member}\n'
+    dead+= f"{len(dead_members)} member(s) are dead overall"
     await ctx.send(dead)
 
 
