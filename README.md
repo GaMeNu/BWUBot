@@ -11,6 +11,10 @@ Aliases: +status, +a?
 
 **+tips:** Sends a random anxiety tip, @V0C4L01D's idea
 
+**+someone [message]:** Pings a random person in the server with the message.
+
+Requires MOD rank (set in the .env.)
+
 ### Kill system:
 **+kill [message including user mention(s)]:** Kills the mentioned user(s) if they are alive.
 
@@ -23,3 +27,9 @@ Aliases: +liquidate, +destroy, +stab, +attack, +shoot, +assassinate
 Aliases: +bomb
 
 **+dead:** Sends a list of all dead members.
+
+**+alive:** Sends a list of all alive members.
+
+**+alive? [Message including a user(s) mention]:** Sends a list of all members mentioned, checking if they are alive.
+
+Aliases: +isAlive
