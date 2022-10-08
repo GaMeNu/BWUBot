@@ -117,7 +117,7 @@ async def someone(ctx, *args):
     guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
     members = guild.members
     pinged = rand.choice(members)
-    msg = f'{pinged} '
+    msg = f'{pinged.mention} '
     msg += ' '.join(args)
     msg += f'\n - Pinged by {ctx.message.author}'
     await ctx.channel.send(msg)
