@@ -21,6 +21,7 @@ GUILD = os.getenv('DISCORD_GUILD')
 NSFW_CHANNEL = int(os.getenv('DISCORD_NSFW_CHANNEL'))
 ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
 COMMANDS_CHANNEL = int(os.getenv('DISCORD_COMMANDS_CHANNEL'))
+MOD_ROLE = int(os.getenv('MOD_ROLE_ID'))
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='+', intents=intents)
@@ -64,6 +65,12 @@ async def on_ready():
     print("Started uptime loop!")
 
 
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.channel.send("Error: Command not found you dumdum! Try using **+help**.")
+    return
+
 #detects if a message was sent in NSFW_CHANNEL, and sends a "spotted" alert in ALERTS_CHANNEL
 @bot.event
 async def on_message(message):
@@ -87,13 +94,35 @@ async def help(ctx):
     help_embed.add_field(name="+help",value="Guess what this one does, I bet you can't.", inline=False)
     help_embed.add_field(name="+on?",value="Also works with: +status, +a?\nSends a response if the bot is on, along with the time it's been connected",inline=False)
     help_embed.add_field(name='+tips',value='Sends a random anxiety tip.\nCommand idea and sources by V0C4L01D.',inline=False)
+    help_embed.add_field(name='+someone [message]',value='Pings a random person in the server with the message.\nRequires MOD rank.',inline=False)
     help_embed.add_field(name="+kill [(Message including a user(s) mention)/(*/all)]",value="Also works with:+liquidate, +destroy, +stab, +attack, +shoot, +assassinate\nKills the alive user(s) mentioned in the message, */all = everyone",inline=False)
     help_embed.add_field(name="+revive [(Message including a user(s) mention)/(*/all)]",value="Revives the dead user(s) mentioned in the message, */all = everyone",inline=False)
     help_embed.add_field(name='+terrorism',value="Also works with: +bomb\nKills 0-12 random people.")
     help_embed.add_field(name="+dead",value="Sends a list of all dead members.",inline=False)
+    help_embed.add_field(name="+alive",value="Sends a list of all alive members.",inline=False)
+    help_embed.add_field(name="+alive? [Message including a user(s) mention]",value="Also works with: +isAlive\nSends a list of all members mentioned, checking if they are alive.",inline=False)
 
     
     await ctx.channel.send(embed=help_embed)
+
+
+@bot.command()
+async def someone(ctx, *args):
+    
+    pinger = ctx.message.author
+    if not discord.utils.get(pinger.roles, id=MOD_ROLE):
+        await ctx.channel.send('Error: You do not have premission!')
+        return
+    
+    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    members = guild.members
+    pinged = rand.choice(members)
+    msg = f'{pinged} '
+    msg += ' '.join(args)
+    msg += f'\n - Pinged by {ctx.message.author}'
+    await ctx.channel.send(msg)
+
+
 
 
 #V0C4LO1D's command idea
@@ -141,7 +170,6 @@ async def kill(ctx, *args):
             return
     
     #Sends a killed message with a few checks to check if there are multiple members, specifically who to kill and who is already dead, and if the member killed himself.
-    killed ='Congrats. '
 
     if args[0] in ['all','*']:
 
@@ -150,13 +178,14 @@ async def kill(ctx, *args):
         guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
         count =0
         for member in guild.members:
-            if not member in dead_members:
+            if (not member in dead_members) and (not f'{member.name}#{member.discriminator}' == 'GM#2372') and (not member.bot):
                 killed += f'- {member}\n'
                 dead_members.append(member)
                 count+=1
         
         killed += f'{count} members were killed overall.'
     else:
+        killed =''
         #Multi person murder.
         if len(mentions)>=2:
             for member in mentions[0:-2]:
@@ -211,7 +240,6 @@ async def revive(ctx,*args):
         if member.bot:
             await ctx.send('Bots are immune to murder.')
             return
-    revived = "Thank you. "
 
     if args[0] in ['all','*']:
 
@@ -225,9 +253,10 @@ async def revive(ctx,*args):
                 dead_members.remove(member)
                 count+=1
         
-        revived += f'{count} members were killed overall.'
+        revived += f'{count} members were revived overall.'
             
     else:
+        revived = ''
         if len(mentions)>=2:
             for member in mentions[0:-2]:
                 if(member in dead_members):
@@ -257,7 +286,7 @@ async def revive(ctx,*args):
                     revived += f'{mentions[0]} has been revived.'
             else:
                 if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                    revived += f'{mentions[0]} has somehow revived himself even though he was already alive...?'
+                    revived += f'{mentions[0]} has somehow revived himself even though they were already alive...?'
                 else:
                     revived += f'{mentions[0]} is not dead.'
 
@@ -291,7 +320,7 @@ async def terrorism(ctx):
         dead_count = 0
         for i in range (num_killed):
             member = rand.choice(members)
-            while(member in dead_members and (not len(dead_members)==len(members))):
+            while((member in dead_members and not len(dead_members)==len(members))):
                 member = rand.choice(members)
             
             if not len(dead_members)==len(members):
@@ -321,6 +350,45 @@ async def dead(ctx):
         dead+=f'- {member}\n'
     dead+= f"{len(dead_members)} member(s) are dead overall"
     await ctx.send(dead)
+
+
+@bot.command()
+async def alive(ctx):
+    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    members=guild.members
+    ret_msg = "Alive members (Big W):\n"
+    count = 0
+    for member in members:
+        if not member in dead_members:
+            ret_msg+=f' - {member}\n'
+            count+=1
+    ret_msg+=f'{count} members are alive overall.'
+
+    await ctx.channel.send(ret_msg)
+
+
+
+@bot.command(name='alive?',aliases=['isAlive'])
+async def isAlive(ctx):
+    mentions = ctx.message.mentions
+
+    if not mentions:
+        await ctx.send('Please mention member(s) to check with an \'@\'')
+        return
+    
+    return_msg='Dead check:\n'
+    for member in mentions:
+        return_msg+=f'{member} - '
+        if member in dead_members:
+            return_msg+='DEAD'
+        else:
+            return_msg+='ALIVE'
+        return_msg+='\n'
+    await ctx.channel.send(return_msg)
+
+
+    
+
 
 
 
