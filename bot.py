@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 import time as t
 import random as rand
 import datetime
-import urllib3
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
@@ -22,6 +21,7 @@ NSFW_CHANNEL = int(os.getenv('DISCORD_NSFW_CHANNEL'))
 ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
 COMMANDS_CHANNEL = int(os.getenv('DISCORD_COMMANDS_CHANNEL'))
 MOD_ROLE = int(os.getenv('MOD_ROLE_ID'))
+CREATOR= int(os.getenv('CREATOR_ID'))
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='+', intents=intents)
@@ -31,6 +31,8 @@ bot.remove_command('help')
 def reset_vars():
     global dead_members
     dead_members=[]
+    global suicide_times
+    suicide_times={}
 
 #Time since connection established loop
 @tasks.loop(seconds=1)
@@ -94,6 +96,7 @@ async def help(ctx):
     help_embed.add_field(name="+help",value="Guess what this one does, I bet you can't.", inline=False)
     help_embed.add_field(name="+on?",value="Also works with: +status, +a?\nSends a response if the bot is on, along with the time it's been connected",inline=False)
     help_embed.add_field(name='+tips',value='Sends a random anxiety tip.\nCommand idea and sources by V0C4L01D.',inline=False)
+    help_embed.add_field(name="+rickroll [Message including a user(s) mention]",value="Rickrolls the mentioned users in DMs.",inline=False)
     help_embed.add_field(name='+someone [message]',value='Pings a random person in the server with the message.\nRequires MOD rank.',inline=False)
     help_embed.add_field(name="+kill [(Message including a user(s) mention)/(*/all)]",value="Also works with:+liquidate, +destroy, +stab, +attack, +shoot, +assassinate\nKills the alive user(s) mentioned in the message, */all = everyone",inline=False)
     help_embed.add_field(name="+revive [(Message including a user(s) mention)/(*/all)]",value="Revives the dead user(s) mentioned in the message, */all = everyone",inline=False)
@@ -104,6 +107,25 @@ async def help(ctx):
 
     
     await ctx.channel.send(embed=help_embed)
+
+
+@bot.command()
+async def rickroll(ctx):
+    mentions = ctx.message.mentions
+    if not mentions:
+        await ctx.channel.send("Error: No mentions supplied!")
+        return
+    
+    creator = ctx.guild.get_member(CREATOR)
+    
+    for member in mentions:
+        if not member == creator:
+            await member.send(f":musical_note: Never gonna give you up!\nNever gonna let you down!\nNever gonna run around and desert you!\n\nNever gonna make you cry!\nNever gonna say goodbye\nNever gonna tell a lie, or hurt you! :notes:\n\n- Sent by {ctx.message.author}")
+        else:
+            await ctx.send('Skipping my creator...')
+    
+
+
 
 
 @bot.command()
@@ -184,6 +206,8 @@ async def kill(ctx, *args):
                 count+=1
         
         killed += f'{count} members were killed overall.'
+    
+
     else:
         killed =''
         #Multi person murder.
@@ -213,11 +237,54 @@ async def kill(ctx, *args):
                 dead_members.append(mentions[0])
                 if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
                     killed += f'{mentions[0]} has committed suicide.'
+                    suicide_times[member] = 1
                 else:
                     killed += f'{mentions[0]} has been killed.'
             else:
                 if(f'{ctx.message.author.name}#{ctx.message.author.discriminator}' == f'{mentions[0].name}#{mentions[0].discriminator}'):
-                    killed += f'{mentions[0]} has committed suicide. AGAIN.'
+                    
+                    times_did = suicide_times[member]
+                    
+                    if times_did==1:
+                        killed +=f'{mentions[0]} has committed suicide. AGAIN.'
+                    elif times_did==2:
+                        killed += f'{mentions[0]} has committed suicide for the third time!'
+                    elif times_did==3:
+                        killed += f'Please stop killing yourself...'
+                    elif times_did == 4:
+                        killed += f'Do you need help?'
+                    elif times_did==6:
+                        killed += f'There are better ways to go about this then repeatedly committing suicide...'
+                    elif times_did==7:
+                        killed += f'Life has so much to offer!'
+                    elif times_did==8:
+                        killed += f'{mentions[0]} you good?'
+                    elif times_did==9:
+                        killed += f'I\'ll just assume I\'m talking to another bot now and respond with the usual message.'
+                    elif times_did>=10 and times_did<20:
+                        killed += f'{mentions[0]} has committed suicide.'
+                    elif times_did == 20:
+                        killed+=f'**Achivement get: Dedicated to Death!**\nKill yourself 20 times using +stab'
+                    elif times_did>20 and times_did<50:
+                        killed += f'{mentions[0]} has committed suicide.'
+                    elif times_did==50:
+                        killed += f'There\'s nothing here but blood...'
+                    elif times_did==51:
+                        killed+=f'Blood... So much blood...'
+                    elif times_did==52:
+                        killed+='Why... Why are you still here?'
+                    elif times_did==53:
+                        killed+='Are you really that dedicated? Are you hunting for easter eggs?'
+                    elif times_did==54:
+                        killed+='Or are you just suicidal?'
+                    elif times_did==55:
+                        killed+='In the case of the latter, please contact actual sources... This bot is not a good source.'
+                    elif times_did==56:
+                        killed+='I guess I\'m gonna leave you to it...'
+                    elif times_did>56:
+                        killed+=' * NO RESPONSE'
+                    
+                    suicide_times[member] += 1
                 else:
                     killed += f'{mentions[0]} was already dead.'
 
