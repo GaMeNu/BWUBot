@@ -15,6 +15,8 @@ Aliases: +status, +a?
 
 Requires MOD rank (set in the .env.)
 
+**+rickroll [message including user mention(s)]: ** Sends a rickroll in a DM to mentioned user(s)
+
 ### Kill system:
 **+kill [message including user mention(s)]:** Kills the mentioned user(s) if they are alive.
 
