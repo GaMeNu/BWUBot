@@ -35,8 +35,12 @@ BOTDATA_PATH = [The FULL path of your "botdata.json" file goes here. Format: C:/
 ```
 
 ### Required discord premissions:
+**Required bot intents:**
 ![image](https://user-images.githubusercontent.com/98153342/196023145-addb686b-e412-428f-b4d1-108ae4229a50.png)
+
+**URL Generator permissions:**
 ![image](https://user-images.githubusercontent.com/98153342/196023198-91e89132-697b-4d85-a6ae-ddbe9cf4185a.png)
+Use the generated URL (at the bottom of the pag) to invite the bot into your server.
 
 
 ## Included commands:
