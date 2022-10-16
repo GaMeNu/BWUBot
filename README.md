@@ -5,7 +5,7 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 ## Table of Contents:
 
-[Setting up your own BWUBot instance]()
+[Setting up your own BWUBot instance](https://github.com/GaMeNu/BWUBot/blob/main/README.md#set-up-your-own-bwubot-instance)
 
 [Available commands](https://github.com/GaMeNu/BWUBot/blob/main/README.md#included-commands)
 
