@@ -24,7 +24,7 @@ Requires MOD rank (set in the .env.)
 
 
 ### Timezone system:
-**+tz:** Sends a link to a list of all valid timezones.
+**+tz:** Sends a link to a list of all valid timezones. Link: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568
 
 **+tz set <timezone>:** Sets your timezone, Case-Sensitive
 
