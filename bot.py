@@ -1,8 +1,8 @@
 import asyncio
 from asyncore import loop
-from dis import disco
 from http.client import UnimplementedFileMode
 import os
+import sys
 from turtle import title
 from unicodedata import name
 import discord
@@ -11,7 +11,14 @@ from discord.ext import tasks
 from dotenv import load_dotenv
 import time as t
 import random as rand
+import json
+import logging
 import datetime
+import pytz
+from datetime import timezone
+from dateutil import tz
+from dateutil.zoneinfo import get_zonefile_instance
+
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
@@ -22,26 +29,58 @@ ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
 COMMANDS_CHANNEL = int(os.getenv('DISCORD_COMMANDS_CHANNEL'))
 MOD_ROLE = int(os.getenv('MOD_ROLE_ID'))
 CREATOR= int(os.getenv('CREATOR_ID'))
+BOTDATA = os.getenv('BOTDATA_PATH')
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='+', intents=intents)
 bot.remove_command('help')
 
+def create_botdata_entry(member_id):
+    global botdata
+    id_str = str(member_id)
+    botdata[id_str] = {}
+    logging.info(f'[Botdata] created new botdata entry for userID {member_id}')
 
 def reset_vars():
     global dead_members
     dead_members=[]
     global suicide_times
     suicide_times={}
+    global uptime
+    uptime=0
+
+    
+
+    global botdata
+    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+
+    try:
+        with open(BOTDATA,'r') as f:
+            botdata = json.loads(f.read())
+
+    except:
+        logging.critical('[VARSET] Error while loading from JSON! Recreating JSON file.')
+        botdata = {}
+        for member in guild.members:
+            create_botdata_entry(member.id)
+    else:
+        for member in guild.members:
+            if not str(member.id) in botdata.keys():
+                create_botdata_entry(member.id)
+    
+    with open(BOTDATA,'w') as f:
+        f.write(json.dumps(botdata))
+            
+
 
 #Time since connection established loop
 @tasks.loop(seconds=1)
 async def time_connected_loop():
-    global uptime
+    print("[TCL] Started uptime loop!")
     #How the hell do presences work
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name='for +help; Online for 0 minutes.',state='Existing',details=f'Hello world!'))
-    uptime=0
     #the update loop itself
+    global uptime
     while True:
         await asyncio.sleep(1)
         uptime+=1
@@ -62,9 +101,14 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.watching, name='for +help')
     await bot.change_presence(activity=activity)
     await cmds_ch.send(f'Connected to server!\nWatching for **+help**...')
-    time_connected_loop.start()
     reset_vars()
-    print("Started uptime loop!")
+    time_connected_loop.cancel()
+    time_connected_loop.start()
+
+@bot.event
+async def on_resumed():
+    cmds_ch = bot.get_channel(COMMANDS_CHANNEL)
+    await cmds_ch.send('Successfully resumed connection!')
 
 
 @bot.event
@@ -96,7 +140,9 @@ async def help(ctx):
     help_embed.add_field(name="+help",value="Guess what this one does, I bet you can't.", inline=False)
     help_embed.add_field(name="+on?",value="Also works with: +status, +a?\nSends a response if the bot is on, along with the time it's been connected",inline=False)
     help_embed.add_field(name='+tips',value='Sends a random anxiety tip.\nCommand idea and sources by V0C4L01D.',inline=False)
+    help_embed.add_field(name='+tz [get/set/<null>]', value='Set your own timezone or get someone else\'s current time.',inline=False)
     help_embed.add_field(name="+rickroll [Message including a user(s) mention]",value="Rickrolls the mentioned users in DMs.",inline=False)
+    help_embed.add_field(name='+insult [noun/adj/custom/<none>] [Message including a user(s) mention]', value = 'Insults the mentioned user(s).',inline=False)
     help_embed.add_field(name='+someone [message]',value='Pings a random person in the server with the message.\nRequires MOD rank.',inline=False)
     help_embed.add_field(name="+kill [(Message including a user(s) mention)/(*/all)]",value="Also works with:+liquidate, +destroy, +stab, +attack, +shoot, +assassinate\nKills the alive user(s) mentioned in the message, */all = everyone",inline=False)
     help_embed.add_field(name="+revive [(Message including a user(s) mention)/(*/all)]",value="Revives the dead user(s) mentioned in the message, */all = everyone",inline=False)
@@ -105,9 +151,55 @@ async def help(ctx):
     help_embed.add_field(name="+alive",value="Sends a list of all alive members.",inline=False)
     help_embed.add_field(name="+alive? [Message including a user(s) mention]",value="Also works with: +isAlive\nSends a list of all members mentioned, checking if they are alive.",inline=False)
 
-    
+
     await ctx.channel.send(embed=help_embed)
 
+@bot.command()
+async def tz(ctx, *args):
+    if not args:
+        await ctx.send('List of available timezones can be found in this link:\nhttps://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568')
+        return
+
+
+    if args[0] == 'set':
+        if len(args)==1:
+            await ctx.send('Error: Incorrect syntax!\nUsage: +tz set (timezone)\nLink to a list of all timezones: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568')
+            return
+        if not args[1] in list(get_zonefile_instance().zones):
+            await ctx.send('Error: Timezone not found! Please note that timezones are Case-Sensitive.\nLink to a list of all timezones: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568')
+            return
+        authorID = str(ctx.author.id)
+        print(authorID)
+        botdata[authorID]['timezone']=args[1]
+        with open(BOTDATA,'w') as f:
+            f.write(json.dumps(botdata))
+        await ctx.send(f'Successfully set your timezone to {args[1]}!')
+
+
+    elif args[0] == 'get':
+        authorID = str(ctx.author.id)
+        if (not 'timezone' in botdata[authorID].keys()) or botdata[authorID]['timezone'] == "":
+            await ctx.send('Error: You must register your own timezone before accessing others\'!\nPlease use `+tz` to get a list of all valid timezones, and `+tz set <timezone>` to set your timezone.')
+            return
+        
+        mentions = ctx.message.mentions
+        if not mentions:
+            await ctx.send("Error: No user mentions supplied!")
+            return
+        
+        msg =''
+        for member in mentions:
+            if str(botdata[str(member.id)]['timezone']) != "":
+                member_tz=pytz.timezone(str(botdata[str(member.id)]['timezone']))
+                msg += f'For **{member}**, it is currently **{datetime.datetime.now(member_tz).strftime("%X %p, %A %b %d, %Y** (Timezone: %Z, UTC%z)")}\n'
+        
+
+        await ctx.send(msg)
+
+    else:
+        await ctx.send('Error: Invalid argument! Usage: +tz (get/set/<null>)')
+    
+        
 
 @bot.command()
 async def rickroll(ctx):
@@ -125,8 +217,137 @@ async def rickroll(ctx):
             await ctx.send('Skipping my creator...')
     
 
+@bot.command()
+async def insult(ctx,*args):
+    mentions = ctx.message.mentions
+    if not mentions:
+        await ctx.send("Error: No mentions supplied!")
+        return
+    
+    creator = ctx.guild.get_member(CREATOR)
 
+    if creator in mentions and not ctx.author==creator:
+        mentions.remove(creator)
+    
+    if not mentions:
+        await ctx.send("Error: No mentions supplied! (My creator cannot be insulted.)")
+        return
 
+    insults_noun = ['Tosser',
+        'Airy-fairy',
+        'Ankle-biter',
+        'Arsehole',
+        'Arse-licker',
+        'Arsemonger',
+        'Barmy',
+        'Chav',
+        'Cheese Eating Surrender Monkey',
+        'Dingus',
+        'Git',
+        'Knob',
+        'Minger',
+        'Muppet',
+        'Naff',
+        'Nutter',
+        'Pikey',
+        'Pillock',
+        'Plonker',
+        'Prat',
+        'Scrubber',
+        'Trollop',
+        'Uphill Gardener',
+        'Twit',
+        'Knob Head',
+        'Piss Off',
+        'Bell End',
+        'Lazy Sod',
+        'Skiver',
+        'Slag',
+        'Wazzock',
+        'Ninny',
+        'Berk',
+        'Chuffer',
+        'Gannet',
+        'Ligger',
+        'Maggot',
+        'Mingebag'
+        'Wanker',
+    ]
+    insults_adj = [
+        'Lost the plot',
+        'Crude steel',
+        'Daft Cow',
+        'Dodgy',
+        'Gormless',
+        'Manky',
+        'Daft as a bush',
+        'Dead from the neck up',
+        'Gone to the dogs',
+        'Like a dog with two dicks',
+        'Mad as a bag of ferrets',
+        'Not batting on a full wicket',
+        'Plug-Ugly'
+        ]
+    insults_general =[
+        'You look like a fuckin\' donut mate',
+        'Fuck you',
+        'You suck'
+    ]
+    list_selector = rand.randrange(1,4)
+    msg = ""
+    if args[0]=='noun':
+        msg += f'{mentions[0]}, you really are '
+        rand_insult = rand.choice(insults_noun)
+        if rand_insult[0] in ['a','e','i','o','u','A','E','I','O','U']:
+            msg +='an '
+        else:
+            msg+='a '
+        msg+= f'{rand_insult}!'
+    elif args[0] in ['adj','adjective']:
+        msg += f'{mentions[0]}, you really are '
+        rand_insult = rand.choice(insults_adj)
+        msg += f'{rand_insult}!'
+    elif args[0] == 'custom':
+        rand_insult = rand.choice(insults_general)
+        msg += f'{mentions[0]}, {rand_insult}!'
+    else:
+        if len(mentions)==1:
+            if list_selector <= 2:
+                msg += f'{mentions[0]}, you really are '
+                if list_selector==1:
+                    rand_insult = rand.choice(insults_noun)
+                    if rand_insult[0] in ['a','e','i','o','u','A','E','I','O','U']:
+                        msg +='an '
+                    else:
+                        msg+='a '
+                    msg+= f'{rand_insult}!'
+
+                else:
+                    rand_insult = rand.choice(insults_adj)
+                    msg += f'{rand_insult}!'
+            else:
+                rand_insult = rand.choice(insults_general)
+                msg += f'{mentions[0]}, {rand_insult}!'
+                
+        else:
+            for member in mentions:
+                msg+=f'{member}, '
+            if list_selector <= 2:
+                msg +='you all are '
+                if list_selector==1:
+                    rand_insult = rand.choice(insults_noun)
+                    msg+= f'{rand_insult}s!'
+                else:
+                    rand_insult = rand.choice(insults_adj)
+                    msg+= f'{rand_insult}!'
+            else:
+                rand_insult = rand.choice(insults_general)
+                msg+= f'{rand_insult}!'
+
+    await ctx.send(msg)
+
+    
+    
 
 @bot.command()
 async def someone(ctx, *args):
