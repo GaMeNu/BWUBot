@@ -3,6 +3,15 @@ Python bot for the Build With Us discord server. It sucks btw.
 
 When using code from this repo, please make sure it stays Open-Source, and credit me or link this original repo with github.com/GaMeNu/BWUBot. Thank you :)
 
+## Set up your own BWUBot instance:
+
+### pips:
+`pip install discord.py`
+`pip install pytz`
+`pip install python-dateutil`
+`pip install python-dotenv`
+(Run these from your terminal)
+
 ## Included commands:
 
 **+help:** Take a guess.
