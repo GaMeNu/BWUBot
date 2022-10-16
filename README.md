@@ -19,6 +19,17 @@ Requires MOD rank (set in the .env.)
 
 **+rickroll [message including user mention(s)]: ** Sends a rickroll in a DM to mentioned user(s)
 
+**+insult [<none>/noun/custom/adj]:** Sends a random insult, chooses from a specific list if specified.
+
+
+
+### Timezone system:
+**+tz:** Sends a link to a list of all valid timezones.
+
+**+tz set <timezone>:** Sets your timezone, Case-Sensitive
+
+**+tz get <User mention(s)>:** Gets a user current time. Requires both you and the user to have registered your timezones. 
+
 ### Kill system:
 **+kill [message including user mention(s)]:** Kills the mentioned user(s) if they are alive.
 
