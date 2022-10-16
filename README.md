@@ -16,6 +16,23 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 (Run these from your terminal)
 
+### .env config:
+```
+DISCORD_TOKEN = \[Bot's token goes here]
+DISCORD_GUILD= \[Your server's name goes here]
+DISCORD_COMMANDS_CHANNEL = \[The commands channel ID goes here]
+DISCORD_NSFW_CHANNEL = \[Your server's NSFW channel ID (if you have one)]
+DISCORD_ALERT_CHANNEL = \[Your server's NSFW-Alert channel ID (if you have one)]
+MOD_ROLE_ID= \[The ID of the Mod role in your server goes here]
+CREATOR_ID = \[Your own ID goes here (gives you protection within kill system and insult)]
+BOTDATA_PATH = \[The FULL path of your "botdata.json" file goes here. Format: C:/Users/etc...]
+```
+
+### Required discord premissions:
+![image](https://user-images.githubusercontent.com/98153342/196023145-addb686b-e412-428f-b4d1-108ae4229a50.png)
+![image](https://user-images.githubusercontent.com/98153342/196023198-91e89132-697b-4d85-a6ae-ddbe9cf4185a.png)
+
+
 ## Included commands:
 
 **+help:** Take a guess.
