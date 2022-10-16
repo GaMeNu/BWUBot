@@ -7,9 +7,13 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 ### pips:
 `pip install discord.py`
+
 `pip install pytz`
+
 `pip install python-dateutil`
+
 `pip install python-dotenv`
+
 (Run these from your terminal)
 
 ## Included commands:
