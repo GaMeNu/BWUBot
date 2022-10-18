@@ -1,13 +1,9 @@
-import asyncio
-from asyncore import loop
-from http.client import UnimplementedFileMode
-import os
-import sys
-from turtle import title
-from unicodedata import name
 import discord
 from discord.ext import commands
 from discord.ext import tasks
+import asyncio
+from asyncore import loop
+import os
 from dotenv import load_dotenv
 import time as t
 import random as rand
@@ -18,18 +14,28 @@ import pytz
 from datetime import timezone
 from dateutil import tz
 from dateutil.zoneinfo import get_zonefile_instance
+import win32gui as win
+from pynput import keyboard
+
 
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-NSFW_CHANNEL = int(os.getenv('DISCORD_NSFW_CHANNEL'))
-ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
+try:
+    NSFW_CHANNEL = int(os.getenv('DISCORD_NSFW_CHANNEL'))
+    ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
+except:
+    logging.warning('No NSFW Channel or NSFW Alert channel found! Proceeding without these...')
+    NSFW_CHANNEL = 0
+    ALERT_CHANNEL = 0
 COMMANDS_CHANNEL = int(os.getenv('DISCORD_COMMANDS_CHANNEL'))
 MOD_ROLE = int(os.getenv('MOD_ROLE_ID'))
 CREATOR= int(os.getenv('CREATOR_ID'))
 BOTDATA = os.getenv('BOTDATA_PATH')
+
+logging.getLogger().setLevel(logging.INFO)
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='+', intents=intents)
@@ -40,6 +46,23 @@ def create_botdata_entry(member_id):
     id_str = str(member_id)
     botdata[id_str] = {}
     logging.info(f'[Botdata] created new botdata entry for userID {member_id}')
+    
+
+def remove_botdata_entry(member_id):
+    global botdata
+    id_str = str(member_id)
+    try:
+        del botdata[id_str]
+        logging.info(f'[Botdata] deleted botdata entry for userID {member_id}')
+    except:
+        logging.error(f'[Botdata] error while deleting botdata entry for userID {member_id}, are you sure they exist?')
+
+
+def choose_random_member():
+    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    members = guild.members
+    return rand.choice(members)
+
 
 def reset_vars():
     global dead_members
@@ -64,9 +87,20 @@ def reset_vars():
         for member in guild.members:
             create_botdata_entry(member.id)
     else:
+        botdata_temp = botdata
         for member in guild.members:
             if not str(member.id) in botdata.keys():
                 create_botdata_entry(member.id)
+        
+        for memberID in list(botdata.keys()):
+            member = guild.get_member(int(memberID))
+            if member == None:
+                remove_botdata_entry(int(memberID))
+                
+                
+            
+
+
     
     with open(BOTDATA,'w') as f:
         f.write(json.dumps(botdata))
@@ -76,7 +110,7 @@ def reset_vars():
 #Time since connection established loop
 @tasks.loop(seconds=1)
 async def time_connected_loop():
-    print("[TCL] Started uptime loop!")
+    logging.info("[TCL] Started uptime loop!")
     #How the hell do presences work
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name='for +help; Online for 0 minutes.',state='Existing',details=f'Hello world!'))
     #the update loop itself
@@ -105,17 +139,23 @@ async def on_ready():
     time_connected_loop.cancel()
     time_connected_loop.start()
 
-@bot.event
-async def on_resumed():
-    cmds_ch = bot.get_channel(COMMANDS_CHANNEL)
-    await cmds_ch.send('Successfully resumed connection!')
-
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.channel.send("Error: Command not found you dumdum! Try using **+help**.")
     return
+
+
+@bot.event
+async def on_member_join(member):
+   create_botdata_entry(member.id)
+
+
+@bot.event
+async def on_member_remove(member):
+    remove_botdata_entry(member.id)
+    
 
 #detects if a message was sent in NSFW_CHANNEL, and sends a "spotted" alert in ALERTS_CHANNEL
 @bot.event
@@ -126,7 +166,10 @@ async def on_message(message):
     if (message.channel.id==NSFW_CHANNEL):
         alerts = bot.get_channel(ALERT_CHANNEL)
         await alerts.send(f'{message.author} was spotted in the NSFW channel!!!')
-        return
+    
+    if message.content.lower() == 'wow':
+        if rand.randrange(1, 5)==1:
+            await message.channel.send('<:wow:1028426222704807937>',reference=message)
     
     await bot.process_commands(message)
 
@@ -140,7 +183,8 @@ async def help(ctx):
     help_embed.add_field(name="+help",value="Guess what this one does, I bet you can't.", inline=False)
     help_embed.add_field(name="+on?",value="Also works with: +status, +a?\nSends a response if the bot is on, along with the time it's been connected",inline=False)
     help_embed.add_field(name='+tips',value='Sends a random anxiety tip.\nCommand idea and sources by V0C4L01D.',inline=False)
-    help_embed.add_field(name='+tz [get/set/<null>]', value='Set your own timezone or get someone else\'s current time.',inline=False)
+    help_embed.add_field(name='+tz [get/set/<none>]', value='Set your own timezone or get someone else\'s current time.',inline=False)
+    help_embed.add_field(name='+about', value='Sends some info about BWUBot.',inline=False)
     help_embed.add_field(name="+rickroll [Message including a user(s) mention]",value="Rickrolls the mentioned users in DMs.",inline=False)
     help_embed.add_field(name='+insult [noun/adj/custom/<none>] [Message including a user(s) mention]', value = 'Insults the mentioned user(s).',inline=False)
     help_embed.add_field(name='+someone [message]',value='Pings a random person in the server with the message.\nRequires MOD rank.',inline=False)
@@ -199,10 +243,44 @@ async def tz(ctx, *args):
     else:
         await ctx.send('Error: Invalid argument! Usage: +tz (get/set/<null>)')
     
-        
 
 @bot.command()
-async def rickroll(ctx):
+async def about(ctx):
+    await ctx.send('Oh, about me?')
+    t.sleep(3)
+    await ctx.send('I was created in September 2022 as GameMenu\'s hobby project.')
+    t.sleep(1)
+    await ctx.send('(Probably the best program he\'ll ever write as well lmao)')
+    t.sleep(3)
+    await ctx.send('Anyway use `+help` to look at all available commands.')
+
+
+@bot.command()
+async def randnum(ctx,*args):
+    min = 1
+    max = 7
+    if args:
+        if len(args)>=2:
+            try:
+                min = int(args[0])
+                max = int(args[1])+1
+            except:
+                await ctx.send('Error: One of the 2 provided arguments could not be parsed!')
+                return
+        else:
+            try:
+                max = int(args[0])+1
+            except:
+                await ctx.send('Error: The provided argument could not be parsed!')
+                return
+    await ctx.send(f'Rolled {rand.randrange(min,max)}! (Range: {min}..{max-1})')
+
+
+
+
+
+@bot.command()
+async def rickroll(ctx,args):
     mentions = ctx.message.mentions
     if not mentions:
         await ctx.channel.send("Error: No mentions supplied!")
@@ -224,6 +302,11 @@ async def insult(ctx,*args):
         await ctx.send("Error: No mentions supplied!")
         return
     
+
+    """ 
+    #Code for creator saftey from insults.
+    #You wanna turn it on, you coward?
+
     creator = ctx.guild.get_member(CREATOR)
 
     if creator in mentions and not ctx.author==creator:
@@ -231,67 +314,74 @@ async def insult(ctx,*args):
     
     if not mentions:
         await ctx.send("Error: No mentions supplied! (My creator cannot be insulted.)")
-        return
+        return 
+    """
 
-    insults_noun = ['Tosser',
-        'Airy-fairy',
-        'Ankle-biter',
-        'Arsehole',
-        'Arse-licker',
-        'Arsemonger',
-        'Barmy',
-        'Chav',
-        'Cheese Eating Surrender Monkey',
-        'Dingus',
-        'Git',
-        'Knob',
-        'Minger',
-        'Muppet',
-        'Naff',
-        'Nutter',
-        'Pikey',
-        'Pillock',
-        'Plonker',
-        'Prat',
-        'Scrubber',
-        'Trollop',
-        'Uphill Gardener',
-        'Twit',
-        'Knob Head',
-        'Piss Off',
-        'Bell End',
-        'Lazy Sod',
-        'Skiver',
-        'Slag',
-        'Wazzock',
-        'Ninny',
-        'Berk',
-        'Chuffer',
-        'Gannet',
-        'Ligger',
-        'Maggot',
-        'Mingebag'
-        'Wanker',
+
+
+    insults_noun = [
+        'airy-fairy',
+        'ankle-biter',
+        'arsehole',
+        'arse-licker',
+        'arsemonger',
+        'barmy',
+        'bell-end',
+        'berk',
+        'bitch',
+        'chav',
+        'cheese-eating surrender monkey',
+        'chuffer',
+        'dingus',
+        'git',
+        'knob',
+        'maggot',
+        'mingebag'
+        'minger',
+        'muppet',
+        'naff',
+        'ninny',
+        'nutter',
+        'pikey',
+        'pillock',
+        'plonker',
+        'prat',
+        'scrubber',
+        'tosser',
+        'trollop',
+        'uphill gardener',
+        'twit',
+        'knob-head',
+        'piss-off',
+        'lazy sod',
+        'skiver',
+        'slag',
+        'stupid fuck',
+        'wazzock',
+        'gannet',
+        'ligger',
+        'wanker',
     ]
     insults_adj = [
-        'Lost the plot',
-        'Crude steel',
-        'Daft Cow',
-        'Dodgy',
-        'Gormless',
-        'Manky',
-        'Daft as a bush',
-        'Dead from the neck up',
-        'Gone to the dogs',
-        'Like a dog with two dicks',
-        'Mad as a bag of ferrets',
-        'Not batting on a full wicket',
-        'Plug-Ugly'
+        'crude steel',
+        'daft as a bush',
+        'daft cow',
+        'dead from the neck up',
+        'dodgy',
+        'lost the plot',
+        'gormless',
+        'manky',
+        'gone to the dogs',
+        'like a dog with two dicks',
+        'mad as a bag of ferrets',
+        'not batting on a full wicket',
+        'plug-Ugly'
         ]
     insults_general =[
-        'You look like a fuckin\' donut mate',
-        'Fuck you',
-        'You suck'
+        'you look like a fuckin\' donut mate',
+        'fuck you',
+        'you suck',
+        'no one ever liked you, and no one will like you'
     ]
     list_selector = rand.randrange(1,4)
     msg = ""
@@ -357,9 +447,8 @@ async def someone(ctx, *args):
         await ctx.channel.send('Error: You do not have premission!')
         return
     
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
-    members = guild.members
-    pinged = rand.choice(members)
+    
+    pinged = choose_random_member()
     msg = f'{pinged.mention} '
     msg += ' '.join(args)
     msg += f'\n - Pinged by {ctx.message.author}'
@@ -391,6 +480,38 @@ async def isOn(ctx):
     uptimeM = (uptime//60)%60
     uptimeH = uptime//3600
     await ctx.send(f"Hello world! I am currently online.\nTime since connected: {uptimeH}:{uptimeM}:{uptimeS}")
+
+
+def send_chat(out: str):
+    keyboard.press('t')
+    t.sleep(0.1)
+    keyboard.release('t')
+    t.sleep(0.1)
+    keyboard.type(out)
+
+
+@bot.command()
+async def GM(ctx, *args):
+    if not 'Minecraft' in (win.GetWindowText(win.GetForegroundWindow())):
+        await ctx.send('Error: GM is not currently playing Minecraft!')
+        return
+
+    
+    if not args:
+        await ctx.send('Error: No arguments supplied!')
+        return
+    
+    
+    if args[0] == 'say':
+        msg = ctx.message.content[len('+GM say ')::]
+        send_chat(msg)
+        
+
+
+
+
+
+
 
 #Kill command, will go into more detail in the command
 @bot.command(aliases = ['liquidate','destroy','stab','attack','shoot','assassinate'])
