@@ -20,6 +20,10 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 `pip install python-dotenv`
 
+`pip install pynput`
+
+`pip install pywin32`
+
 (Run these from your terminal)
 
 ### .env config:
