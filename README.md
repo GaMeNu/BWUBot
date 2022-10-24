@@ -61,7 +61,7 @@ Aliases: +status, +a?
 
 Requires MOD rank (set in the .env.)
 
-**+rickroll [message including user mention(s)]: ** Sends a rickroll in a DM to mentioned user(s)
+**+rickroll [message including user mention(s)]:** Sends a rickroll in a DM to mentioned user(s)
 
 **+insult [<none>/noun/custom/adj]:** Sends a random insult, chooses from a specific list if specified.
 
