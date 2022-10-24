@@ -21,8 +21,8 @@ from pynput import keyboard
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
+TOKEN = os.getenv('BWU_DISCORD_TOKEN')
+GUILD = int(os.getenv('DISCORD_GUILD'))
 try:
     NSFW_CHANNEL = int(os.getenv('DISCORD_NSFW_CHANNEL'))
     ALERT_CHANNEL = int(os.getenv('DISCORD_ALERT_CHANNEL'))
@@ -33,9 +33,9 @@ except:
 COMMANDS_CHANNEL = int(os.getenv('DISCORD_COMMANDS_CHANNEL'))
 MOD_ROLE = int(os.getenv('MOD_ROLE_ID'))
 CREATOR= int(os.getenv('CREATOR_ID'))
-BOTDATA = os.getenv('BOTDATA_PATH')
+BOTDATA = os.getenv('BWU_BOTDATA_PATH')
 
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='+', intents=intents)
@@ -45,7 +45,7 @@ def create_botdata_entry(member_id):
     global botdata
     id_str = str(member_id)
     botdata[id_str] = {}
-    logging.info(f'[Botdata] created new botdata entry for userID {member_id}')
+    logging.info(f'[Botdata] created new botdata entry for userID {member_id}, name = {guild.get_member(member_id)}')
     
 
 def remove_botdata_entry(member_id):
@@ -53,13 +53,13 @@ def remove_botdata_entry(member_id):
     id_str = str(member_id)
     try:
         del botdata[id_str]
-        logging.info(f'[Botdata] deleted botdata entry for userID {member_id}')
+        logging.info(f'[Botdata] deleted botdata entry for userID {member_id}, name = {guild.get_member(member_id)}')
     except:
         logging.error(f'[Botdata] error while deleting botdata entry for userID {member_id}, are you sure they exist?')
 
 
 def choose_random_member():
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
     members = guild.members
     return rand.choice(members)
 
@@ -72,10 +72,16 @@ def reset_vars():
     global uptime
     uptime=0
 
+    global skyOffline
+    skyOffline = False
+
+    global guild
+    guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
     
+    global creator
+    creator = guild.get_member(CREATOR)
 
     global botdata
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
 
     try:
         with open(BOTDATA,'r') as f:
@@ -110,22 +116,18 @@ def reset_vars():
 #Time since connection established loop
 @tasks.loop(seconds=1)
 async def time_connected_loop():
-    logging.info("[TCL] Started uptime loop!")
-    #How the hell do presences work
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name='for +help; Online for 0 minutes.',state='Existing',details=f'Hello world!'))
-    #the update loop itself
     global uptime
-    while True:
-        await asyncio.sleep(1)
-        uptime+=1
-        if (uptime%60==0):
-            await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name=f'for +help; Online for {uptime//60} minutes.',details=f'Hello world!'))
+    #How the hell do presences work
+    #the update loop itself
+    uptime+=1
+    if (uptime%60==0):
+        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name=f'for +help; Online for {uptime//60} minutes.',details=f'Hello world!'))
 
 
 #Prints some data to terminal, also sends connected msg on COMMANDS_CHANNEL
 @bot.event
 async def on_ready():
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
     print(f'{bot.user} has connected to Discord!')
     print(f'Bot is in guild {guild.name}, ID: {guild.id}')
     members = f'\n - '.join([f'[{str(member.status).upper()}] {member.name}, ID = {member.id}' for member in guild.members])
@@ -136,8 +138,14 @@ async def on_ready():
     await bot.change_presence(activity=activity)
     await cmds_ch.send(f'Connected to server!\nWatching for **+help**...')
     reset_vars()
-    time_connected_loop.cancel()
+
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,name='for +help; Online for 0 minutes.',state='Existing',details=f'Hello world!'))
     time_connected_loop.start()
+    logging.info("[TCL] Started uptime loop!")
+
+@bot.event
+async def on_resumed():
+    time_connected_loop.restart()
 
 
 @bot.event
@@ -155,17 +163,39 @@ async def on_member_join(member):
 @bot.event
 async def on_member_remove(member):
     remove_botdata_entry(member.id)
-    
+
 
 #detects if a message was sent in NSFW_CHANNEL, and sends a "spotted" alert in ALERTS_CHANNEL
 @bot.event
 async def on_message(message):
+    global skyOffline
+    global creator
+
+
     if (message.author==bot.user):
         return
 
     if (message.channel.id==NSFW_CHANNEL):
         alerts = bot.get_channel(ALERT_CHANNEL)
         await alerts.send(f'{message.author} was spotted in the NSFW channel!!!')
+
+    skyMember = guild.get_member(694247027172966481)
+    if (skyOffline) and (message.author == skyMember):
+        await message.channel.send(f'{creator.mention}, Sky\'s back!')
+        print('\a')
+        skyOffline = False
+    
+    async def userMsgContainsWord(userID:int, word:str):
+        if ((f' {word} ' in message.content.lower()) or (f'{word} ' in message.content.lower()) or (f' {word}' in message.content.lower()) or (word == message.content.lower())) and (message.author.id == userID):
+            await message.channel.send(f"Stop with the {word}!", reference=message)
+        
+    await userMsgContainsWord(skyMember.id, 'gj')
+    await userMsgContainsWord(skyMember.id, 'goodjob')
+    await userMsgContainsWord(creator.id, 'kk')
+    
+
+
+    
     
     if message.content.lower() == 'wow':
         if rand.randrange(1, 5)==1:
@@ -213,7 +243,6 @@ async def tz(ctx, *args):
             await ctx.send('Error: Timezone not found! Please note that timezones are Case-Sensitive.\nLink to a list of all timezones: https://gist.github.com/heyalexej/8bf688fd67d7199be4a1682b3eec7568')
             return
         authorID = str(ctx.author.id)
-        print(authorID)
         botdata[authorID]['timezone']=args[1]
         with open(BOTDATA,'w') as f:
             f.write(json.dumps(botdata))
@@ -242,7 +271,15 @@ async def tz(ctx, *args):
 
     else:
         await ctx.send('Error: Invalid argument! Usage: +tz (get/set/<null>)')
-    
+
+
+
+@bot.command()
+async def skyOff(ctx):
+    global skyOffline
+    skyOffline = True
+    await ctx.send('Sky is now offline!')
+
 
 @bot.command()
 async def about(ctx):
@@ -317,6 +354,42 @@ async def insult(ctx,*args):
         return 
     """
 
+    def insult(insult: str, insulted: list, type: str):
+        msg = ''
+        if len(insulted)==1:
+            if type == 'noun':
+                msg += f'{mentions[0]}, you really are '
+                if insult[0] in ['a','e','i','o','u','A','E','I','O','U']:
+                    msg +='an '
+                else:
+                    msg+='a '
+                msg+= f'{insult}'
+            elif type == 'adj':
+                msg += f'{mentions[0]}, you really are '
+                msg+= f'{insult}'
+            elif type == 'custom':
+                msg = f'{mentions[0]}, {insult}'
+            else:
+                logging.error('Incorrect argument provided for insult(type)! Must be either noun, adj, or custom! Continuing with arg custom...')
+                msg = insult(insult, insulted, 'custom')
+        else:
+            for member in mentions:
+                msg+=f'{member}, '
+            if type == 'noun':
+                msg += f'you all are {insult}'
+                if msg[-1] == 's':
+                    msg += 'es'
+                else:
+                    msg += 's'
+            elif type == 'adj':
+                msg += f'you all are {insult}'
+            elif type == 'custom':
+                msg += f'{insult}'
+            else:
+                logging.error('Incorrect argument provided for insult(type)! Must be either noun, adj, or custom! Continuing with arg custom...')
+                msg = insult(insult, insulted, 'custom')
+        msg += '!'
+        return msg
 
 
     insults_noun = [
@@ -333,10 +406,14 @@ async def insult(ctx,*args):
         'cheese-eating surrender monkey',
         'chuffer',
         'dingus',
+        'gannet',
         'git',
         'knob',
+        'knob-head',
+        'lazy sod',
+        'ligger',
         'maggot',
-        'mingebag'
+        'mingebag',
         'minger',
         'muppet',
         'naff',
@@ -344,23 +421,19 @@ async def insult(ctx,*args):
         'nutter',
         'pikey',
         'pillock',
+        'piss-off',
         'plonker',
         'prat',
         'scrubber',
+        'skiver',
+        'stupid fuck',
+        'slag',
         'tosser',
         'trollop',
-        'uphill gardener',
         'twit',
-        'knob-head',
-        'piss-off',
-        'lazy sod',
-        'skiver',
-        'slag',
-        'stupid fuck',
-        'wazzock',
-        'gannet',
-        'ligger',
+        'uphill gardener',
         'wanker',
+        'wazzock',
     ]
     insults_adj = [
         'crude steel',
@@ -368,71 +441,56 @@ async def insult(ctx,*args):
         'daft cow',
         'dead from the neck up',
         'dodgy',
-        'lost the plot',
-        'gormless',
-        'manky',
         'gone to the dogs',
+        'gormless',
         'like a dog with two dicks',
+        'manky',
         'mad as a bag of ferrets',
         'not batting on a full wicket',
+        'one sandwich short of a picnic',
         'plug-Ugly'
         ]
-    insults_general =[
-        'you look like a fuckin\' donut mate',
+    insults_custom =[
         'fuck you',
         'you suck',
-        'no one ever liked you, and no one will like you'
+        'no one ever liked you, and no one will like you',
+        'evolution\'s mistake was wasting over 20,000 years of developing humans just to create you'
     ]
-    list_selector = rand.randrange(1,4)
-    msg = ""
-    if args[0]=='noun':
-        msg += f'{mentions[0]}, you really are '
-        rand_insult = rand.choice(insults_noun)
-        if rand_insult[0] in ['a','e','i','o','u','A','E','I','O','U']:
-            msg +='an '
-        else:
-            msg+='a '
-        msg+= f'{rand_insult}!'
-    elif args[0] in ['adj','adjective']:
-        msg += f'{mentions[0]}, you really are '
-        rand_insult = rand.choice(insults_adj)
-        msg += f'{rand_insult}!'
-    elif args[0] == 'custom':
-        rand_insult = rand.choice(insults_general)
-        msg += f'{mentions[0]}, {rand_insult}!'
-    else:
-        if len(mentions)==1:
-            if list_selector <= 2:
-                msg += f'{mentions[0]}, you really are '
-                if list_selector==1:
-                    rand_insult = rand.choice(insults_noun)
-                    if rand_insult[0] in ['a','e','i','o','u','A','E','I','O','U']:
-                        msg +='an '
-                    else:
-                        msg+='a '
-                    msg+= f'{rand_insult}!'
 
-                else:
-                    rand_insult = rand.choice(insults_adj)
-                    msg += f'{rand_insult}!'
-            else:
-                rand_insult = rand.choice(insults_general)
-                msg += f'{mentions[0]}, {rand_insult}!'
-                
+    if not args:
+        insults_all = []
+        insults_all.extend(insults_noun)
+        insults_all.extend(insults_adj)
+        insults_all.extend(insults_custom)
+        rand_insult = rand.choice(insults_all)
+        if rand_insult in insults_noun:
+            msg = insult(rand_insult, mentions, 'noun')
+
+        elif rand_insult in insults_adj:
+            msg = insult(rand_insult, mentions, 'adj')
         else:
-            for member in mentions:
-                msg+=f'{member}, '
-            if list_selector <= 2:
-                msg +='you all are '
-                if list_selector==1:
-                    rand_insult = rand.choice(insults_noun)
-                    msg+= f'{rand_insult}s!'
-                else:
-                    rand_insult = rand.choice(insults_adj)
-                    msg+= f'{rand_insult}!'
-            else:
-                rand_insult = rand.choice(insults_general)
-                msg+= f'{rand_insult}!'
+            msg = insult(rand_insult, mentions, 'custom')
+
+
+    if args[0]=='noun':
+        msg = insult(rand.choice(insults_noun), mentions, 'noun')
+    elif args[0] in ['adj','adjective']:
+        msg = insult(rand.choice(insults_adj), mentions, 'adj')
+    elif args[0] == 'custom':
+        msg = insult(rand.choice(insults_custom), mentions, 'custom')
+    else:
+        insults_all = []
+        insults_all.extend(insults_noun)
+        insults_all.extend(insults_adj)
+        insults_all.extend(insults_custom)
+        rand_insult = rand.choice(insults_all)
+        if rand_insult in insults_noun:
+            msg = insult(rand_insult, mentions, 'noun')
+        elif rand_insult in insults_adj:
+            msg = insult(rand_insult, mentions, 'adj')
+        else:
+            msg = insult(rand_insult, mentions, 'custom')
+
 
     await ctx.send(msg)
 
@@ -476,6 +534,7 @@ async def tips(ctx):
 #Sends a message if the pot is online, along with the time since the connection was established.
 @bot.command(name="on?", aliases = ['a?','status','uptime'])
 async def isOn(ctx):
+    global uptime
     uptimeS = uptime%60
     uptimeM = (uptime//60)%60
     uptimeH = uptime//3600
@@ -539,7 +598,7 @@ async def kill(ctx, *args):
 
         killed = 'Mass murder! Killed:\n'
 
-        guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+        guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
         count =0
         for member in guild.members:
             if (not member in dead_members) and (not f'{member.name}#{member.discriminator}' == 'GM#2372') and (not member.bot):
@@ -654,7 +713,7 @@ async def revive(ctx,*args):
 
         revived = 'The ressurection has come! Revived:\n'
 
-        guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+        guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
         count = 0
         for member in guild.members:
             if member in dead_members:
@@ -704,7 +763,7 @@ async def revive(ctx,*args):
 
 @bot.command(aliases=["bomb"])
 async def terrorism(ctx):
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
     members=guild.members
     modifier = rand.choice([0.5,1,2.5])
     num_killed=rand.randrange(1,6)
@@ -763,7 +822,7 @@ async def dead(ctx):
 
 @bot.command()
 async def alive(ctx):
-    guild = discord.utils.find(lambda g: g.name == GUILD, bot.guilds)
+    guild = discord.utils.find(lambda g: g.id == GUILD, bot.guilds)
     members=guild.members
     ret_msg = "Alive members (Big W):\n"
     count = 0
