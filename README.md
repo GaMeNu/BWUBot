@@ -34,7 +34,7 @@ DISCORD_COMMANDS_CHANNEL = [The commands channel ID goes here]
 DISCORD_NSFW_CHANNEL = [Your server's NSFW channel ID (if you have one)]
 DISCORD_ALERT_CHANNEL = [Your server's NSFW-Alert channel ID (if you have one)]
 MOD_ROLE_ID= [The ID of the Mod role in your server goes here]
-CREATOR_ID = [Your own ID goes here (gives you protection within kill system and insult)]
+CREATOR_ID = [Your own ID goes here (gives you protection within kill system)]
 BWU_BOTDATA_PATH = [The FULL path of your "botdata.json" file goes here. Format: C:/Users/.../botdata.json]
 ```
 
