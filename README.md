@@ -14,6 +14,8 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 ### pips:
 `pip install discord.py`
 
+`pip install discord-py-interactions`
+
 `pip install pytz`
 
 `pip install python-dateutil`
