@@ -11,7 +11,7 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 ## Set up your own BWUBot instance:
 
-### pips:
+### Required packages:
 `pip install discord.py`
 
 `pip install discord-py-interactions`
@@ -26,7 +26,7 @@ When using code from this repo, please make sure it stays Open-Source, and credi
 
 `pip install pywin32`
 
-(Run these from your terminal)
+(Run these commands from your terminal)
 
 ### .env config:
 ```
