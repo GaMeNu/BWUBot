@@ -18,6 +18,9 @@ import win32gui as win
 from pynput import keyboard
 
 
+# "Bed == nono"
+# - SkyadeRed, 2022
+
 
 #All .env tokens, required for the bot to function without any modifications.
 load_dotenv()
