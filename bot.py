@@ -664,7 +664,7 @@ async def kill(ctx, *args):
                     elif times_did==8:
                         killed += f'{mentions[0]} you good?'
                     elif times_did==9:
-                        killed += f'I\'ll just assume I\'m talking to another bot now and respond with the usual message.'
+                        killed += f'Hi, GM here. Idk how you feel, but if something is wrong, please, please contact actual resources. This bot is a joke, not something to be taken seriously, and it\'s definitely not a good source. So please refer to actual resources if you need to.\n-GM'
                     elif times_did>=10 and times_did<20:
                         killed += f'{mentions[0]} has committed suicide.'
                     elif times_did == 20:
