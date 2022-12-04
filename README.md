@@ -1,5 +1,5 @@
 # BWUBot
-Python bot for the Build With Us discord server. It sucks btw.
+Depricated Python bot for the Build With Us discord server. It sucks btw.
 
 When using code from this repo, please make sure it stays Open-Source, and credit me or link this original repo with github.com/GaMeNu/BWUBot. Thank you :)
 
